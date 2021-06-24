@@ -170,7 +170,9 @@ export class TextFileEditor extends BaseTextEditor {
 			// was already asked for being readonly or not. The rationale is that
 			// a resolved model might have more specific information about being
 			// readonly or not that the input did not have.
-			textEditor.updateOptions({ readOnly: textFileModel.isReadonly() });
+			if (resolvedModel.isReadonly()) {
+				textEditor.updateOptions({ readOnly: true });
+			}
 		} catch (error) {
 			this.handleSetInputError(error, input, options);
 		}

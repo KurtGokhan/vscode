@@ -96,7 +96,9 @@ export class AbstractTextResourceEditor extends BaseTextEditor {
 		// was already asked for being readonly or not. The rationale is that
 		// a resolved model might have more specific information about being
 		// readonly or not that the input did not have.
-		textEditor.updateOptions({ readOnly: resolvedModel.isReadonly() });
+		if (resolvedModel.isReadonly()) {
+			textEditor.updateOptions({ readOnly: true });
+		}
 	}
 
 	private restoreTextResourceEditorViewState(editor: AbstractTextResourceEditorInput, control: IEditor) {

@@ -30,6 +30,9 @@ import { IExtUri } from 'vs/base/common/resources';
 import { MutableDisposable } from 'vs/base/common/lifecycle';
 import { IContextKeyService } from 'vs/platform/contextkey/common/contextkey';
 import { ITextEditorOptions } from 'vs/platform/editor/common/editor';
+import { FILES_READONLY_CONFIG, IFilesConfiguration } from 'vs/platform/files/common/files';
+import { IdleValue } from 'vs/base/common/async';
+import { ResourceGlobMatcher } from 'vs/workbench/common/resources';
 
 export interface IEditorConfiguration {
 	editor: object;
@@ -55,6 +58,19 @@ export abstract class BaseTextEditor extends EditorPane implements ITextEditorPa
 	override get scopedContextKeyService(): IContextKeyService | undefined {
 		return isCodeEditor(this.editorControl) ? this.editorControl.invokeWithinContext(accessor => accessor.get(IContextKeyService)) : undefined;
 	}
+
+
+	private readonly readOnlyMatcher = this._register(new IdleValue(() => {
+		const matcher = this._register(this.instantiationService.createInstance(
+			ResourceGlobMatcher,
+			() => this.textResourceConfigurationService.getValue<IFilesConfiguration>(this.getActiveResource())?.files.readOnly || Object.create(null),
+			event => event.affectsConfiguration(FILES_READONLY_CONFIG)
+		));
+
+		this._register(matcher.onExpressionChange(() => this.handleConfigurationChangeEvent()));
+
+		return matcher;
+	}));
 
 	constructor(
 		id: string,
@@ -119,11 +135,13 @@ export abstract class BaseTextEditor extends EditorPane implements ITextEditorPa
 	}
 
 	protected getConfigurationOverrides(): ICodeEditorOptions {
+		const resource = this.getActiveResource();
+
 		return {
 			overviewRulerLanes: 3,
 			lineNumbersMinChars: 3,
 			fixedOverflowWidgets: true,
-			readOnly: this.input?.hasCapability(EditorInputCapabilities.Readonly),
+			readOnly: this.input?.hasCapability(EditorInputCapabilities.Readonly) || (resource ? this.readOnlyMatcher.value.matches(resource) : false),
 			// render problems even in readonly editors
 			// https://github.com/microsoft/vscode/issues/89057
 			renderValidationDecorations: 'on'
